@@ -54,8 +54,8 @@ function fetchNearbyAmenities(lat, lng) {
     // Clear old pins first so they don't pile up as you travel
     poiLayerGroup.clearLayers();
 
-    // Define search radius (2000 metres) and infrastructure tags
-    const radius = 2000;
+    // Define search radius (30 kms) and infrastructure tags
+    const radius = 30000;
     const query = `[out:json][timeout:25];
         (
           node["amenity"="hospital"](around:${radius},${lat},${lng});
