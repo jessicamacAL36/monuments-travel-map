@@ -103,6 +103,8 @@ function fetchNearbyAmenities(lat, lng) {
           nw["shop"="supermarket"](around:${radius},${lat},${lng});
           nw["shop"="convenience"](around:${radius},${lat},${lng});
           nw["shop"="general"](around:${radius},${lat},${lng});
+          nw["shop"="department_store"](around:${radius},${lat},${lng});
+          nw["building"="retail"](around:${radius},${lat},${lng});
           nw["building"="supermarket"](around:${radius},${lat},${lng});
         );
         out center;`;
