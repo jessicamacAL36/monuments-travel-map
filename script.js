@@ -93,6 +93,7 @@ function fetchNearbyAmenities(lat, lng) {
     const query = `[out:json][timeout:25];
         (
           nw["amenity"="hospital"](around:${radius},${lat},${lng});
+          nw["amenity"="pharmacy"](around:${radius},${lat},${lng});
           nw["amenity"="doctors"](around:${radius},${lat},${lng});
           nw["amenity"="clinic"](around:${radius},${lat},${lng});
           nw["amenity"="police"](around:${radius},${lat},${lng});
