@@ -3,21 +3,16 @@ let userMarker;
 let poiLayerGroup;
 
 function initMap() {
-    // Initialise the map container focusing globally first
     map = L.map('map').setView([0, 0], 2);
 
-    // Render free global OpenStreetMap background map layouts
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Grouping container to clear out markers dynamically when location changes
     poiLayerGroup = L.layerGroup().addTo(map);
 
-    // Build the dynamic floating key map legend in top-left frame
     const legend = L.control({ position: 'topleft' });
-
     legend.onAdd = function () {
         const div = L.DomUtil.create('div', 'map-legend');
         div.innerHTML = `
@@ -33,7 +28,6 @@ function initMap() {
     };
     legend.addTo(map);
 
-    // Initialise browser native geolocation watching stream
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(updateLocation, handleLocationError, {
             enableHighAccuracy: true,
@@ -45,12 +39,10 @@ function initMap() {
     }
 }
 
-// Triggers automatically whenever your laptop GPS coordinates update
 function updateLocation(position) {
     const lat = position.coords.latitude;
     const lng = position.coords.longitude;
 
-    // Create or move your custom pink location dot marker pin
     if (userMarker) {
         userMarker.setLatLng([lat, lng]);
     } else {
@@ -60,9 +52,7 @@ function updateLocation(position) {
             iconAnchor: [8, 8]
         });
         userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map)
-            .bindPopup("<b>Your Laptop Location</b>").openPopup();
-        
-        // Push view frame closer to coordinates on first capture
+            .bindPopup("<b>Your Location</b>").openPopup();
         map.setView([lat, lng], 13);
     }
 
@@ -70,27 +60,30 @@ function updateLocation(position) {
     fetchNearbyAmenities(lat, lng);
 }
 
-// Queries the live crowdsourced open database up to a 30km radius
 function fetchNearbyAmenities(lat, lng) {
     poiLayerGroup.clearLayers();
 
-    const radius = 30000; // Expanded to 30km for rural coverage
+    const radius = 30000; // 30km
+    
+    // UPGRADED QUERY: Using 'nw' to find dots AND drawn building outlines
     const query = `[out:json][timeout:25];
         (
-          node["amenity"="hospital"](around:${radius},${lat},${lng});
-          node["amenity"="doctors"](around:${radius},${lat},${lng});
-          node["amenity"="clinic"](around:${radius},${lat},${lng});
-          node["amenity"="police"](around:${radius},${lat},${lng});
-          node["amenity"="fuel"](around:${radius},${lat},${lng});
-          node["tourism"="hotel"](around:${radius},${lat},${lng});
-          node["tourism"="guest_house"](around:${radius},${lat},${lng});
-          node["shop"="supermarket"](around:${radius},${lat},${lng});
-          node["shop"="convenience"](around:${radius},${lat},${lng});
-          node["shop"="general"](around:${radius},${lat},${lng});
-          node["shop"="department_store"](around:${radius},${lat},${lng});
-          node["building"="retail"](around:${radius},${lat},${lng});
+          nw["amenity"="hospital"](around:${radius},${lat},${lng});
+          nw["amenity"="doctors"](around:${radius},${lat},${lng});
+          nw["amenity"="clinic"](around:${radius},${lat},${lng});
+          nw["amenity"="police"](around:${radius},${lat},${lng});
+          nw["amenity"="fuel"](around:${radius},${lat},${lng});
+          nw["tourism"="hotel"](around:${radius},${lat},${lng});
+          nw["tourism"="guest_house"](around:${radius},${lat},${lng});
+          nw["tourism"="hostel"](around:${radius},${lat},${lng});
+          nw["shop"="supermarket"](around:${radius},${lat},${lng});
+          nw["shop"="convenience"](around:${radius},${lat},${lng});
+          nw["shop"="general"](around:${radius},${lat},${lng});
+          nw["shop"="department_store"](around:${radius},${lat},${lng});
+          nw["building"="retail"](around:${radius},${lat},${lng});
+          nw["building"="supermarket"](around:${radius},${lat},${lng});
         );
-        out body;`;
+        out center;`; // 'out center' forces building shapes to report a clean center point coordinate
 
     const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
 
@@ -99,22 +92,25 @@ function fetchNearbyAmenities(lat, lng) {
         .then(data => {
             if (data.elements) {
                 data.elements.forEach(element => {
-                    if (element.lat && element.lon) {
-                        const name = element.tags.name || "Unnamed Facility";
-                        const type = element.tags.amenity || element.tags.tourism || element.tags.shop || "facility";
+                    // Use center coordinates for building shapes, or normal coordinates for standard dots
+                    const latPos = element.lat || (element.center && element.center.lat);
+                    const lngPos = element.lon || (element.center && element.center.lon);
+
+                    if (latPos && lngPos) {
+                        const name = element.tags.name || "Unnamed Location";
+                        const type = element.tags.amenity || element.tags.tourism || element.tags.shop || element.tags.building || "location";
                         
-                        let colourClass = 'pin-supermarket'; // Fallback
+                        let colourClass = 'pin-supermarket'; 
                         
-                        // Map the incoming tags to your updated custom pin class colours
                         if (type === 'hospital' || type === 'doctors' || type === 'clinic') {
                             colourClass = 'pin-hospital';
                         } else if (type === 'police') {
                             colourClass = 'pin-police';
                         } else if (type === 'fuel') {
                             colourClass = 'pin-fuel';
-                        } else if (type === 'hotel' || type === 'guest_house') {
+                        } else if (type === 'hotel' || type === 'guest_house' || type === 'hostel') {
                             colourClass = 'pin-hotel';
-                        } else if (type === 'supermarket' || type === 'convenience' || type === 'general' || type === 'department_store' || type === 'retail') {
+                        } else {
                             colourClass = 'pin-supermarket';
                         }
 
@@ -126,7 +122,7 @@ function fetchNearbyAmenities(lat, lng) {
 
                         const formattedType = type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
 
-                        L.marker([element.lat, element.lon], { icon: amenityIcon })
+                        L.marker([latPos, lngPos], { icon: amenityIcon })
                             .addTo(poiLayerGroup)
                             .bindPopup(`<b>${name}</b><br>Category: ${formattedType}`);
                     }
