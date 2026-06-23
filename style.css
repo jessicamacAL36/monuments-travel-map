@@ -1,32 +1,61 @@
-/* Reset default margins and padding */
+/* Reset browser defaults */
 html, body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
     overflow: hidden;
-    font-family: Arial, sans-serif;
 }
 
-/* Make the map cover the full viewport screen */
+/* Ensure full screen map container */
 #map {
     width: 100%;
     height: 100vh;
 }
 
-/* Custom Marker Styling */
+/* Solid Circular Marker Pins Override */
 .custom-pin {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+    border-radius: 50% !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5) !important;
+    display: block !important;
 }
 
-/* Category-specific colours */
-.pin-user        { background-color: #ff68ae; width: 18px; height: 18px; } /* Pink */
-.pin-hospital    { background-color: #dc3545; } /* Red */
-.pin-police      { background-color: #0051ff; } /* Bright Blue */
-.pin-fuel        { background-color: #00ff0d; } /* Green */
-.pin-hotel       { background-color: #6f42c1; } /* Purple */
-.pin-supermarket { background-color: #ffee00; } /* Yellow */
+/* Your Custom Category-specific colours */
+.pin-user        { background-color: #ff68ae !important; } /* Pink */
+.pin-hospital    { background-color: #dc3545 !important; } /* Red */
+.pin-police      { background-color: #0051ff !important; } /* Bright Blue */
+.pin-fuel        { background-color: #00ff0d !important; } /* Green */
+.pin-hotel       { background-color: #6f42c1 !important; } /* Purple */
+.pin-supermarket { background-color: #ffee00 !important; } /* Yellow */
+
+/* FLOATING MAP KEY/LEGEND DESIGN */
+.map-legend {
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 12px;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    line-height: 22px;
+    color: #333333;
+}
+
+.map-legend h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    border-bottom: 1px solid #cccccc;
+    padding-bottom: 4px;
+}
+
+/* Key Color Dots inside Legend */
+.legend-key {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid #ffffff;
+    vertical-align: middle;
+    box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
