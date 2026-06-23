@@ -37,8 +37,9 @@ html, body {
     box-shadow: 0 0 10px rgba(0,0,0,0.2);
     font-family: Arial, sans-serif;
     font-size: 13px;
-    line-height: 22px;
+    line-height: 18px;
     color: #333333;
+    max-width: 240px; /* Forces long names to wrap neatly */
 }
 
 .map-legend h4 {
