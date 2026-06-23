@@ -13,3 +13,20 @@ html, body {
     width: 100%;
     height: 100vh;
 }
+
+/* Custom Marker Styling */
+.custom-pin {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 0 4px rgba(0,0,0,0.4);
+}
+
+/* Category-specific colours */
+.pin-user        { background-color: #007bff; width: 18px; height: 18px; } /* Bright Blue */
+.pin-hospital    { background-color: #dc3545; } /* Red */
+.pin-police      { background-color: #343a40; } /* Dark Charcoal */
+.pin-fuel        { background-color: #ffc107; } /* Orange/Yellow */
+.pin-hotel       { background-color: #6f42c1; } /* Purple */
+.pin-supermarket { background-color: #28a745; } /* Green */

@@ -36,9 +36,8 @@ function updateLocation(position) {
     if (userMarker) {
         userMarker.setLatLng([lat, lng]);
     } else {
-        userMarker = L.marker([lat, lng]).addTo(map)
-            .bindPopup("<b>You are here</b>").openPopup();
-        
+        const userIcon = L.divIcon({className: 'custom-pin pin-user' });
+        userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup("<b>Your Laptop Location</b>").openPopup();
         // Push view closer to user on first capture
         map.setView([lat, lng], 14);
     }
@@ -78,6 +77,17 @@ function fetchNearbyAmenities(lat, lng) {
                         // Gather name information if available, fallback otherwise
                         const name = element.tags.name || "Unnamed Facility";
                         const type = element.tags.amenity || element.tags.tourism || element.tags.shop || "Facility";
+
+                        let colourClass = 'pin-supermarket'; // default fallback
+                        if (type === 'hospital') colourClass = 'pin-hospital';
+                        if (type === 'police') colourClass = 'pin-police';
+                        if (type === 'fuel') colourClass = 'pin-fuel';
+                        if (type === 'hotel') colourClass = 'pin-hotel';
+
+                        // Create custom icon element
+                        const amenityIcon = L.divIcon({
+                            className: `custom-pin ${colourClass}`
+                        });
                         
                         // Capitalise first letter of type
                         const formattedType = type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
