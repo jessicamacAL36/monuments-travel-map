@@ -58,11 +58,24 @@ function fetchNearbyAmenities(lat, lng) {
     const radius = 30000;
     const query = `[out:json][timeout:25];
         (
+          // Hospitals, local clinics, and doctors
           node["amenity"="hospital"](around:${radius},${lat},${lng});
+          node["amenity"="doctors"](around:${radius},${lat},${lng});
+          node["amenity"="clinic"](around:${radius},${lat},${lng});
+
+          // Police stations
           node["amenity"="police"](around:${radius},${lat},${lng});
+
+          // Petrol/Fuel stations
           node["amenity"="fuel"](around:${radius},${lat},${lng});
+
+          // Hotels, guest houses, and B&Bs
           node["tourism"="hotel"](around:${radius},${lat},${lng});
+          node["tourism"="guest_house"](around:${radius},${lat},${lng});
+
+          // Large supermarkets AND smaller local convenience grocery stores
           node["shop"="supermarket"](around:${radius},${lat},${lng});
+          node["shop"="convenience"](around:${radius},${lat},${lng});
         );
         out body;`;
 
@@ -74,19 +87,27 @@ function fetchNearbyAmenities(lat, lng) {
             if (data.elements) {
                 data.elements.forEach(element => {
                     if (element.lat && element.lon) {
-                        // Gather name information if available, fallback otherwise
                         const name = element.tags.name || "Unnamed Facility";
                         const type = element.tags.amenity || element.tags.tourism || element.tags.shop || "Facility";
 
                         let colourClass = 'pin-supermarket'; // default fallback
-                        if (type === 'hospital') colourClass = 'pin-hospital';
-                        if (type === 'police') colourClass = 'pin-police';
-                        if (type === 'fuel') colourClass = 'pin-fuel';
-                        if (type === 'hotel') colourClass = 'pin-hotel';
+                        if (type === 'hospital' || type === 'doctors' || type === 'clinic') {
+                            colourClass = 'pin-hospital';
+                        } else if (type === 'police') {
+                            colourClass = 'pin-police';
+                        } else if (type === 'fuel') {
+                            colourClass = 'pin-fuel';
+                        } else if (type === 'hotel' || type === 'guest_house') {
+                            colourClass = 'pin-hotel';
+                        } else if (type === 'supermarket' || type === 'convenience') {
+                            colourClass = 'pin-supermarket';
+                        }
 
                         // Create custom icon element
                         const amenityIcon = L.divIcon({
-                            className: `custom-pin ${colourClass}`
+                            className: `custom-pin ${colourClass}`,
+                            iconSize: [14, 14],
+                            iconAnchor: [7, 7]
                         });
                         
                         // Capitalise first letter of type

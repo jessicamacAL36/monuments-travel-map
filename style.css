@@ -24,9 +24,9 @@ html, body {
 }
 
 /* Category-specific colours */
-.pin-user        { background-color: #007bff; width: 18px; height: 18px; } /* Bright Blue */
+.pin-user        { background-color: #ff68ae; width: 18px; height: 18px; } /* Pink */
 .pin-hospital    { background-color: #dc3545; } /* Red */
-.pin-police      { background-color: #343a40; } /* Dark Charcoal */
-.pin-fuel        { background-color: #ffc107; } /* Orange/Yellow */
+.pin-police      { background-color: #0051ff; } /* Bright Blue */
+.pin-fuel        { background-color: #00ff0d; } /* Green */
 .pin-hotel       { background-color: #6f42c1; } /* Purple */
-.pin-supermarket { background-color: #28a745; } /* Green */
+.pin-supermarket { background-color: #ffee00; } /* Yellow */
