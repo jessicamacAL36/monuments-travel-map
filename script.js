@@ -8,7 +8,6 @@ let userLng = 0;
 function initMap() {
     map = L.map('map').setView([0, 0], 2);
 
-    // Render the Google Maps Roadmap base layer layout
     L.gridLayer.googleMutant({
         type: 'roadmap' 
     }).addTo(map);
@@ -84,13 +83,11 @@ function fetchNearbyAmenities(lat, lng) {
         shop: { name: "None found", dist: Infinity }
     };
 
-    const radius = 30000; // 30km search radius
+    // OPTIMISATION: Dropping to 10km (10000m) reduces the background database load significantly
+    const radius = 10000; 
     const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
-    
-    // Google Places target types
     const types = ['hospital', 'police', 'gas_station', 'lodging', 'supermarket', 'convenience_store'];
     
-    // We append a public CORS proxy URL to the front of Google's endpoint to bypass browser security blocks
     const targetUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&types=${types.join('|')}&key=${apiKey}`;
     const url = `https://cors-anywhere.herokuapp.com/${targetUrl}`;
 
@@ -106,8 +103,7 @@ function fetchNearbyAmenities(lat, lng) {
                     let colourClass = 'pin-supermarket'; 
                     let categoryKey = 'shop';
                     
-                    // Match Google's returned categories arrays to your pin layout colors
-                    if (place.types.includes('hospital') || place.types.includes('doctor') || place.types.includes('medical_device')) {
+                    if (place.types.includes('hospital') || place.types.includes('doctor')) {
                         colourClass = 'pin-hospital';
                         categoryKey = 'medical';
                     } else if (place.types.includes('police')) {
