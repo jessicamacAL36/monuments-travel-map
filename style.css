@@ -21,7 +21,7 @@ html, body {
     display: block !important;
 }
 
-/* Your Custom Category-specific colours */
+/* Custom Category-specific colours */
 .pin-user        { background-color: #ff68ae !important; } /* Pink */
 .pin-hospital    { background-color: #dc3545 !important; } /* Red */
 .pin-police      { background-color: #0051ff !important; } /* Bright Blue */

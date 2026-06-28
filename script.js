@@ -1,25 +1,23 @@
 let map;
 let userMarker;
 let poiLayerGroup;
-let legendContainer; // Reference to update the key box dynamically
+let legendContainer;
 let userLat = 0;
 let userLng = 0;
 
 function initMap() {
     map = L.map('map').setView([0, 0], 2);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
+    // Load Google Maps Roadmap layer smoothly underneath our setup
+    L.gridLayer.googleMutant({
+        type: 'roadmap' 
     }).addTo(map);
 
     poiLayerGroup = L.layerGroup().addTo(map);
 
-    // Initialise the floating legend control
     const legend = L.control({ position: 'topleft' });
     legend.onAdd = function () {
         legendContainer = L.DomUtil.create('div', 'map-legend');
-        // Initial placeholder state before data loads
         updateLegendUI({});
         return legendContainer;
     };
@@ -36,11 +34,9 @@ function initMap() {
     }
 }
 
-// Separate function to render the legend text dynamically
 function updateLegendUI(nearest) {
     const formatNearest = (item) => {
         if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning area...</small>`;
-        // Convert metres to kilometres or miles (using km with 1 decimal place)
         const distanceKM = (item.dist / 1000).toFixed(1);
         return `<br><small style="color: #444; font-weight: bold;">${item.name} (${distanceKM} km)</small>`;
     };
@@ -80,7 +76,6 @@ function updateLocation(position) {
 function fetchNearbyAmenities(lat, lng) {
     poiLayerGroup.clearLayers();
 
-    // Object to track the closest item found during the API stream loop
     let nearestItems = {
         medical: { name: "None found", dist: Infinity },
         police: { name: "None found", dist: Infinity },
@@ -90,10 +85,11 @@ function fetchNearbyAmenities(lat, lng) {
     };
 
     const radius = 30000; // 30km
+    
+    // Scans nodes and ways (building outlines) across Europe
     const query = `[out:json][timeout:25];
         (
           nw["amenity"="hospital"](around:${radius},${lat},${lng});
-          nw["amenity"="pharmacy"](around:${radius},${lat},${lng});
           nw["amenity"="doctors"](around:${radius},${lat},${lng});
           nw["amenity"="clinic"](around:${radius},${lat},${lng});
           nw["amenity"="police"](around:${radius},${lat},${lng});
@@ -141,15 +137,10 @@ function fetchNearbyAmenities(lat, lng) {
                             categoryKey = 'hotel';
                         }
 
-                        // Calculate exact distance between user and this item in metres
                         const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
 
-                        // Check if this item is closer than the previous closest one found
                         if (currentDistance < nearestItems[categoryKey].dist) {
-                            nearestItems[categoryKey] = {
-                                name: name,
-                                dist: currentDistance
-                            };
+                            nearestItems[categoryKey] = { name: name, dist: currentDistance };
                         }
 
                         const amenityIcon = L.divIcon({
@@ -165,8 +156,6 @@ function fetchNearbyAmenities(lat, lng) {
                             .bindPopup(`<b>${name}</b><br>Category: ${formattedType}`);
                     }
                 });
-
-                // Update the floating map key text layout with the final nearest calculations
                 updateLegendUI(nearestItems);
             }
         })
