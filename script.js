@@ -8,7 +8,7 @@ let userLng = 0;
 function initMap() {
     map = L.map('map').setView([0, 0], 2);
 
-    // Load Google Maps Roadmap layer smoothly underneath our setup
+    // Render the Google Maps Roadmap base layer layout
     L.gridLayer.googleMutant({
         type: 'roadmap' 
     }).addTo(map);
@@ -36,7 +36,7 @@ function initMap() {
 
 function updateLegendUI(nearest) {
     const formatNearest = (item) => {
-        if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning area...</small>`;
+        if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning Google...</small>`;
         const distanceKM = (item.dist / 1000).toFixed(1);
         return `<br><small style="color: #444; font-weight: bold;">${item.name} (${distanceKM} km)</small>`;
     };
@@ -84,82 +84,63 @@ function fetchNearbyAmenities(lat, lng) {
         shop: { name: "None found", dist: Infinity }
     };
 
-    const radius = 30000; // 30km
+    const radius = 30000; // 30km search radius
+    const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
     
-    // Scans nodes and ways (building outlines) across Europe
-    const query = `[out:json][timeout:25];
-        (
-          nw["amenity"="hospital"](around:${radius},${lat},${lng});
-          nw["amenity"="doctors"](around:${radius},${lat},${lng});
-          nw["amenity"="clinic"](around:${radius},${lat},${lng});
-          nw["amenity"="police"](around:${radius},${lat},${lng});
-          nw["amenity"="fuel"](around:${radius},${lat},${lng});
-          nw["tourism"="hotel"](around:${radius},${lat},${lng});
-          nw["tourism"="guest_house"](around:${radius},${lat},${lng});
-          nw["tourism"="hostel"](around:${radius},${lat},${lng});
-          nw["shop"="supermarket"](around:${radius},${lat},${lng});
-          nw["shop"="convenience"](around:${radius},${lat},${lng});
-          nw["shop"="general"](around:${radius},${lat},${lng});
-          nw["shop"="department_store"](around:${radius},${lat},${lng});
-          nw["building"="retail"](around:${radius},${lat},${lng});
-          nw["building"="supermarket"](around:${radius},${lat},${lng});
-        );
-        out center;`;
-
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+    // Google Places target types
+    const types = ['hospital', 'police', 'gas_station', 'lodging', 'supermarket', 'convenience_store'];
+    
+    // We append a public CORS proxy URL to the front of Google's endpoint to bypass browser security blocks
+    const targetUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&types=${types.join('|')}&key=${apiKey}`;
+    const url = `https://cors-anywhere.herokuapp.com/${targetUrl}`;
 
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            if (data.elements) {
-                data.elements.forEach(element => {
-                    const latPos = element.lat || (element.center && element.center.lat);
-                    const lngPos = element.lon || (element.center && element.center.lon);
-
-                    if (latPos && lngPos) {
-                        const name = element.tags.name || "Unnamed Location";
-                        const type = element.tags.amenity || element.tags.tourism || element.tags.shop || element.tags.building || "location";
-                        
-                        let colourClass = 'pin-supermarket'; 
-                        let categoryKey = 'shop';
-                        
-                        if (type === 'hospital' || type === 'doctors' || type === 'clinic') {
-                            colourClass = 'pin-hospital';
-                            categoryKey = 'medical';
-                        } else if (type === 'police') {
-                            colourClass = 'pin-police';
-                            categoryKey = 'police';
-                        } else if (type === 'fuel') {
-                            colourClass = 'pin-fuel';
-                            categoryKey = 'fuel';
-                        } else if (type === 'hotel' || type === 'guest_house' || type === 'hostel') {
-                            colourClass = 'pin-hotel';
-                            categoryKey = 'hotel';
-                        }
-
-                        const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
-
-                        if (currentDistance < nearestItems[categoryKey].dist) {
-                            nearestItems[categoryKey] = { name: name, dist: currentDistance };
-                        }
-
-                        const amenityIcon = L.divIcon({
-                            className: `custom-pin ${colourClass}`,
-                            iconSize: [12, 12],
-                            iconAnchor: [6, 6]
-                        });
-
-                        const formattedType = type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
-
-                        L.marker([latPos, lngPos], { icon: amenityIcon })
-                            .addTo(poiLayerGroup)
-                            .bindPopup(`<b>${name}</b><br>Category: ${formattedType}`);
+            if (data.results) {
+                data.results.forEach(place => {
+                    const latPos = place.geometry.location.lat;
+                    const lngPos = place.geometry.location.lng;
+                    const name = place.name;
+                    
+                    let colourClass = 'pin-supermarket'; 
+                    let categoryKey = 'shop';
+                    
+                    // Match Google's returned categories arrays to your pin layout colors
+                    if (place.types.includes('hospital') || place.types.includes('doctor') || place.types.includes('medical_device')) {
+                        colourClass = 'pin-hospital';
+                        categoryKey = 'medical';
+                    } else if (place.types.includes('police')) {
+                        colourClass = 'pin-police';
+                        categoryKey = 'police';
+                    } else if (place.types.includes('gas_station')) {
+                        colourClass = 'pin-fuel';
+                        categoryKey = 'fuel';
+                    } else if (place.types.includes('lodging')) {
+                        colourClass = 'pin-hotel';
+                        categoryKey = 'hotel';
                     }
+
+                    const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
+
+                    if (currentDistance < nearestItems[categoryKey].dist) {
+                        nearestItems[categoryKey] = { name: name, dist: currentDistance };
+                    }
+
+                    const amenityIcon = L.divIcon({
+                        className: `custom-pin ${colourClass}`,
+                        iconSize: [12, 12],
+                        iconAnchor: [6, 6]
+                    });
+
+                    L.marker([latPos, lngPos], { icon: amenityIcon })
+                        .addTo(poiLayerGroup)
+                        .bindPopup(`<b>${name}</b><br>Source: Google Places`);
                 });
                 updateLegendUI(nearestItems);
             }
         })
-        .catch(error => console.error("Error pulling Overpass data:", error));
+        .catch(error => console.error("Error pulling Google Places data:", error));
 }
 
 function handleLocationError(error) {
