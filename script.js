@@ -8,12 +8,14 @@ let userLng = 0;
 function initMap() {
     map = L.map('map').setView([0, 0], 2);
 
+    // Load Google Maps Roadmap base layer layout smoothly
     L.gridLayer.googleMutant({
         type: 'roadmap' 
     }).addTo(map);
 
     poiLayerGroup = L.layerGroup().addTo(map);
 
+    // Initialise the floating map legend
     const legend = L.control({ position: 'topleft' });
     legend.onAdd = function () {
         legendContainer = L.DomUtil.create('div', 'map-legend');
@@ -33,6 +35,7 @@ function initMap() {
     }
 }
 
+// Function to update the text labels inside our floating key container
 function updateLegendUI(nearest) {
     const formatNearest = (item) => {
         if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning Google...</small>`;
@@ -83,13 +86,9 @@ function fetchNearbyAmenities(lat, lng) {
         shop: { name: "None found", dist: Infinity }
     };
 
-    // OPTIMISATION: Dropping to 10km (10000m) reduces the background database load significantly
-    const radius = 10000; 
-    const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
-    const types = ['hospital', 'police', 'gas_station', 'lodging', 'supermarket', 'convenience_store'];
-    
-    const targetUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&types=${types.join('|')}&key=${apiKey}`;
-    const url = `https://cors-anywhere.herokuapp.com/${targetUrl}`;
+    // Linked to your secure Google Apps Script background macro proxy endpoint
+    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxXlLJkgbheDVEpDFb74fvJUuN8lzDKjo3MNU3XWPhZkvUwXXUvRlrj9Mb08uhtP3Nr/exec";
+    const url = `${googleScriptUrl}?lat=${lat}&lng=${lng}`;
 
     fetch(url)
         .then(response => response.json())
@@ -103,6 +102,7 @@ function fetchNearbyAmenities(lat, lng) {
                     let colourClass = 'pin-supermarket'; 
                     let categoryKey = 'shop';
                     
+                    // Match Google Places returned category tags to map coloured marker sets
                     if (place.types.includes('hospital') || place.types.includes('doctor')) {
                         colourClass = 'pin-hospital';
                         categoryKey = 'medical';
@@ -117,6 +117,7 @@ function fetchNearbyAmenities(lat, lng) {
                         categoryKey = 'hotel';
                     }
 
+                    // Calculate straight-line tracking distance using Leaflet engine framework
                     const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
 
                     if (currentDistance < nearestItems[categoryKey].dist) {
@@ -131,12 +132,12 @@ function fetchNearbyAmenities(lat, lng) {
 
                     L.marker([latPos, lngPos], { icon: amenityIcon })
                         .addTo(poiLayerGroup)
-                        .bindPopup(`<b>${name}</b><br>Source: Google Places`);
+                        .bindPopup(`<b>${name}</b><br>Source: Google Places via Apps Script`);
                 });
                 updateLegendUI(nearestItems);
             }
         })
-        .catch(error => console.error("Error pulling Google Places data:", error));
+        .catch(error => console.error("Error pulling data from Google Apps Script:", error));
 }
 
 function handleLocationError(error) {
