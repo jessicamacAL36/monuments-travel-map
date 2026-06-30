@@ -35,7 +35,7 @@ function initMap() {
     }
 }
 
-// Function to update the text labels inside our floating key container
+// Function to update the text labels inside our floating key container (Supermarkets and Hotels removed)
 function updateLegendUI(nearest) {
     const formatNearest = (item) => {
         if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning Google...</small>`;
@@ -49,8 +49,6 @@ function updateLegendUI(nearest) {
         <div style="margin-bottom: 8px;"><span class="legend-key" style="background-color: #dc3545;"></span>Emergency/Medical ${formatNearest(nearest.medical)}</div>
         <div style="margin-bottom: 8px;"><span class="legend-key" style="background-color: #0051ff;"></span>Police Station ${formatNearest(nearest.police)}</div>
         <div style="margin-bottom: 8px;"><span class="legend-key" style="background-color: #00ff0d;"></span>Petrol Station ${formatNearest(nearest.fuel)}</div>
-        <div style="margin-bottom: 8px;"><span class="legend-key" style="background-color: #6f42c1;"></span>Hotels & B&Bs ${formatNearest(nearest.hotel)}</div>
-        <div style="margin-bottom: 8px;"><span class="legend-key" style="background-color: #ffee00;"></span>Shops & Stores ${formatNearest(nearest.shop)}</div>
     `;
 }
 
@@ -78,12 +76,11 @@ function updateLocation(position) {
 function fetchNearbyAmenities(lat, lng) {
     poiLayerGroup.clearLayers();
 
+    // Only tracking essential services for now
     let nearestItems = {
         medical: { name: "None found", dist: Infinity },
         police: { name: "None found", dist: Infinity },
-        fuel: { name: "None found", dist: Infinity },
-        hotel: { name: "None found", dist: Infinity },
-        shop: { name: "None found", dist: Infinity }
+        fuel: { name: "None found", dist: Infinity }
     };
 
     // Linked to your secure Google Apps Script background macro proxy endpoint
@@ -99,10 +96,10 @@ function fetchNearbyAmenities(lat, lng) {
                     const lngPos = place.geometry.location.lng;
                     const name = place.name;
                     
-                    let colourClass = 'pin-supermarket'; 
-                    let categoryKey = 'shop';
+                    let colourClass = ''; 
+                    let categoryKey = '';
                     
-                    // Match Google Places returned category tags to map coloured marker sets
+                    // Filter out any incoming hotels or shops and only process active key targets
                     if (place.types.includes('hospital') || place.types.includes('doctor')) {
                         colourClass = 'pin-hospital';
                         categoryKey = 'medical';
@@ -112,27 +109,26 @@ function fetchNearbyAmenities(lat, lng) {
                     } else if (place.types.includes('gas_station')) {
                         colourClass = 'pin-fuel';
                         categoryKey = 'fuel';
-                    } else if (place.types.includes('lodging')) {
-                        colourClass = 'pin-hotel';
-                        categoryKey = 'hotel';
                     }
 
-                    // Calculate straight-line tracking distance using Leaflet engine framework
-                    const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
+                    // If it matches our active categories, calculate tracking markers
+                    if (categoryKey) {
+                        const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
 
-                    if (currentDistance < nearestItems[categoryKey].dist) {
-                        nearestItems[categoryKey] = { name: name, dist: currentDistance };
+                        if (currentDistance < nearestItems[categoryKey].dist) {
+                            nearestItems[categoryKey] = { name: name, dist: currentDistance };
+                        }
+
+                        const amenityIcon = L.divIcon({
+                            className: `custom-pin ${colourClass}`,
+                            iconSize: [12, 12],
+                            iconAnchor: [6, 6]
+                        });
+
+                        L.marker([latPos, lngPos], { icon: amenityIcon })
+                            .addTo(poiLayerGroup)
+                            .bindPopup(`<b>${name}</b><br>Source: Google Places`);
                     }
-
-                    const amenityIcon = L.divIcon({
-                        className: `custom-pin ${colourClass}`,
-                        iconSize: [12, 12],
-                        iconAnchor: [6, 6]
-                    });
-
-                    L.marker([latPos, lngPos], { icon: amenityIcon })
-                        .addTo(poiLayerGroup)
-                        .bindPopup(`<b>${name}</b><br>Source: Google Places via Apps Script`);
                 });
                 updateLegendUI(nearestItems);
             }
