@@ -74,6 +74,12 @@ function updateLocation(position) {
 }
 
 function fetchNearbyAmenities(lat, lng) {
+    // SAFETY CHECK: If coordinates haven't loaded from the browser GPS yet, stop here and wait
+    if (lat === undefined || lng === undefined || lat === 0 || lng === 0) {
+        console.log("Waiting for valid GPS coordinates before scanning Google...");
+        return; 
+    }
+
     poiLayerGroup.clearLayers();
 
     // Initialise tracking structure
@@ -84,13 +90,12 @@ function fetchNearbyAmenities(lat, lng) {
     };
 
     // Your secure Apps Script macro URL
-    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbzwzEkmd2pbnbBadn0cNoDp4iOv8_yUedbf-1ZwcSeltlmI8EpXYzgpNXrl_0GnuWK_/exec";
+    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxXlLJkgbheDVEpDFb74fvJUuN8lzDKjo3MNU3XWPhZkvUwXXUvRlrj9Mb08uhtP3Nr/exec";
     const url = `${googleScriptUrl}?lat=${lat}&lng=${lng}`;
 
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            // Check if Google returned a valid results array
             if (data && data.results) {
                 data.results.forEach(place => {
                     if (!place.geometry || !place.geometry.location) return;
@@ -102,7 +107,6 @@ function fetchNearbyAmenities(lat, lng) {
                     let colourClass = ''; 
                     let categoryKey = '';
                     
-                    // Explicitly map Google's backend types to your active visual filters
                     if (place.types.includes('hospital') || place.types.includes('doctor') || place.types.includes('medical_device')) {
                         colourClass = 'pin-hospital';
                         categoryKey = 'medical';
@@ -114,7 +118,6 @@ function fetchNearbyAmenities(lat, lng) {
                         categoryKey = 'fuel';
                     }
 
-                    // Only drop pins for categories actively supported by your map key
                     if (categoryKey && latPos && lngPos) {
                         const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
 
@@ -134,7 +137,6 @@ function fetchNearbyAmenities(lat, lng) {
                     }
                 });
                 
-                // Update text fields inside the map key box
                 updateLegendUI(nearestItems);
             } else if (data && data.error) {
                 console.error("Google API Server Error:", data.error);
