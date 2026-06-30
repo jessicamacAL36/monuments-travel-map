@@ -102,6 +102,7 @@ function fetchNearbyAmenities(lat, lng) {
     fetch(url)
         .then(response => response.json())
         .then(data => {
+            console.log("Raw Google Places Data received:", data);
             if (data && data.results) {
                 data.results.forEach(place => {
                     if (!place.geometry || !place.geometry.location) return;
