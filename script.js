@@ -89,15 +89,17 @@ function fetchNearbyAmenities(lat, lng) {
         fuel: { name: "None found", dist: Infinity }
     };
 
-    // Your secure Apps Script macro URL
-    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxXlLJkgbheDVEpDFb74fvJUuN8lzDKjo3MNU3XWPhZkvUwXXUvRlrj9Mb08uhtP3Nr/exec";
-    const url = `${googleScriptUrl}?lat=${lat}&lng=${lng}`;
+    const radius = 10000; // 10km search radius
+    const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
+    const types = ['hospital', 'police', 'gas_station'];
+    
+    // Direct Google Places endpoint
+    const googleUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&types=${types.join('|')}&key=${apiKey}`;
+    
+    // Bypassing CORS by wrapping it in a direct, reliable public gateway string
+    const url = `https://corsproxy.io/?` + encodeURIComponent(googleUrl);
 
-    // FIX: Added 'method' and 'redirect' configurations to handle Google Macro routing sequences perfectly
-    fetch(url, {
-        method: "GET",
-        redirect: "follow"
-    })
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data && data.results) {
@@ -142,8 +144,8 @@ function fetchNearbyAmenities(lat, lng) {
                 });
                 
                 updateLegendUI(nearestItems);
-            } else if (data && data.error) {
-                console.error("Google API Server Error:", data.error);
+            } else if (data && data.error_message) {
+                console.error("Google API Error:", data.error_message);
             }
         })
         .catch(error => console.error("Network connection error:", error));
