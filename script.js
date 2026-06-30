@@ -84,7 +84,7 @@ function fetchNearbyAmenities(lat, lng) {
     };
 
     // Your secure Apps Script macro URL
-    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxXlLJkgbheDVEpDFb74fvJUuN8lzDKjo3MNU3XWPhZkvUwXXUvRlrj9Mb08uhtP3Nr/exec";
+    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbzwzEkmd2pbnbBadn0cNoDp4iOv8_yUedbf-1ZwcSeltlmI8EpXYzgpNXrl_0GnuWK_/exec";
     const url = `${googleScriptUrl}?lat=${lat}&lng=${lng}`;
 
     fetch(url)
