@@ -35,7 +35,7 @@ function initMap() {
     }
 }
 
-// Function to update the text labels inside our floating key container (Supermarkets and Hotels removed)
+// Function to update the text labels inside our floating key container
 function updateLegendUI(nearest) {
     const formatNearest = (item) => {
         if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning Google...</small>`;
@@ -93,7 +93,11 @@ function fetchNearbyAmenities(lat, lng) {
     const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxXlLJkgbheDVEpDFb74fvJUuN8lzDKjo3MNU3XWPhZkvUwXXUvRlrj9Mb08uhtP3Nr/exec";
     const url = `${googleScriptUrl}?lat=${lat}&lng=${lng}`;
 
-    fetch(url)
+    // FIX: Added 'method' and 'redirect' configurations to handle Google Macro routing sequences perfectly
+    fetch(url, {
+        method: "GET",
+        redirect: "follow"
+    })
         .then(response => response.json())
         .then(data => {
             if (data && data.results) {
