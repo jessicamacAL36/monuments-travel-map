@@ -76,31 +76,34 @@ function updateLocation(position) {
 function fetchNearbyAmenities(lat, lng) {
     poiLayerGroup.clearLayers();
 
-    // Only tracking essential services for now
+    // Initialise tracking structure
     let nearestItems = {
         medical: { name: "None found", dist: Infinity },
         police: { name: "None found", dist: Infinity },
         fuel: { name: "None found", dist: Infinity }
     };
 
-    // Linked to your secure Google Apps Script background macro proxy endpoint
+    // Your secure Apps Script macro URL
     const googleScriptUrl = "https://script.google.com/macros/s/AKfycbxXlLJkgbheDVEpDFb74fvJUuN8lzDKjo3MNU3XWPhZkvUwXXUvRlrj9Mb08uhtP3Nr/exec";
     const url = `${googleScriptUrl}?lat=${lat}&lng=${lng}`;
 
     fetch(url)
         .then(response => response.json())
         .then(data => {
-            if (data.results) {
+            // Check if Google returned a valid results array
+            if (data && data.results) {
                 data.results.forEach(place => {
+                    if (!place.geometry || !place.geometry.location) return;
+
                     const latPos = place.geometry.location.lat;
                     const lngPos = place.geometry.location.lng;
-                    const name = place.name;
+                    const name = place.name || "Unnamed Location";
                     
                     let colourClass = ''; 
                     let categoryKey = '';
                     
-                    // Filter out any incoming hotels or shops and only process active key targets
-                    if (place.types.includes('hospital') || place.types.includes('doctor')) {
+                    // Explicitly map Google's backend types to your active visual filters
+                    if (place.types.includes('hospital') || place.types.includes('doctor') || place.types.includes('medical_device')) {
                         colourClass = 'pin-hospital';
                         categoryKey = 'medical';
                     } else if (place.types.includes('police')) {
@@ -111,8 +114,8 @@ function fetchNearbyAmenities(lat, lng) {
                         categoryKey = 'fuel';
                     }
 
-                    // If it matches our active categories, calculate tracking markers
-                    if (categoryKey) {
+                    // Only drop pins for categories actively supported by your map key
+                    if (categoryKey && latPos && lngPos) {
                         const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
 
                         if (currentDistance < nearestItems[categoryKey].dist) {
@@ -127,13 +130,17 @@ function fetchNearbyAmenities(lat, lng) {
 
                         L.marker([latPos, lngPos], { icon: amenityIcon })
                             .addTo(poiLayerGroup)
-                            .bindPopup(`<b>${name}</b><br>Source: Google Places`);
+                            .bindPopup(`<b>${name}</b><br>Source: Google Places Database`);
                     }
                 });
+                
+                // Update text fields inside the map key box
                 updateLegendUI(nearestItems);
+            } else if (data && data.error) {
+                console.error("Google API Server Error:", data.error);
             }
         })
-        .catch(error => console.error("Error pulling data from Google Apps Script:", error));
+        .catch(error => console.error("Network connection error:", error));
 }
 
 function handleLocationError(error) {
