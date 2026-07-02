@@ -1,3 +1,5 @@
+// Cache-bust trigger for GitHub sync engine
+
 let map;
 let userMarker;
 let poiLayerGroup;
@@ -89,7 +91,7 @@ function fetchNearbyAmenities(lat, lng) {
         fuel: { name: "None found", dist: Infinity }
     };
 
-    const radius = 50000; // 10km search radius
+    const radius = 30000; // 30km search radius
 
     const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
     
