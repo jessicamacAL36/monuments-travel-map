@@ -7,6 +7,11 @@ let legendContainer;
 let userLat = 0;
 let userLng = 0;
 
+// Efficiency Tracking variables to prevent redundant API spam
+let lastFetchedLat = 0;
+let lastFetchedLng = 0;
+const MIN_MOVEMENT_METRES = 500; // Only query Google if moved > 500m
+
 function initMap() {
     map = L.map('map').setView([0, 0], 2);
 
@@ -29,7 +34,7 @@ function initMap() {
     if (navigator.geolocation) {
         navigator.geolocation.watchPosition(updateLocation, handleLocationError, {
             enableHighAccuracy: true,
-            maximumAge: 0,
+            maximumAge: 3000, // Accept cached positions up to 3s old to save battery
             timeout: 10000
         });
     } else {
@@ -76,11 +81,24 @@ function updateLocation(position) {
 }
 
 function fetchNearbyAmenities(lat, lng) {
-    // SAFETY CHECK: If coordinates haven't loaded from the browser GPS yet, stop here and wait
+    // SAFETY CHECK 1: Ensure valid coordinates exist
     if (lat === undefined || lng === undefined || lat === 0 || lng === 0) {
         console.log("Waiting for valid GPS coordinates before scanning Google...");
         return; 
     }
+
+    // EFFICIENCY CHECK 2: Don't query Google if the user hasn't moved far enough
+    if (lastFetchedLat !== 0 && lastFetchedLng !== 0) {
+        const movementDistance = map.distance([lat, lng], [lastFetchedLat, lastFetchedLng]);
+        if (movementDistance < MIN_MOVEMENT_METRES) {
+            console.log(`User only moved ${movementDistance.toFixed(1)}m. Skipping Google API request to save quota.`);
+            return;
+        }
+    }
+
+    // Update tracking variables to current location
+    lastFetchedLat = lat;
+    lastFetchedLng = lng;
 
     poiLayerGroup.clearLayers();
 
@@ -92,17 +110,15 @@ function fetchNearbyAmenities(lat, lng) {
     };
 
     const radius = 30000; // 30km search radius
-
     const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
     
-    // Define the specific Google API type mapping strings
     const categories = [
         { type: 'hospital', key: 'medical', color: 'pin-hospital' },
         { type: 'police', key: 'police', color: 'pin-police' },
         { type: 'gas_station', key: 'fuel', color: 'pin-fuel' }
     ];
 
-    // Create a list of individual network requests for each category
+    // Map out the network request promises cleanly
     const requests = categories.map(cat => {
         const googleUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${cat.type}&key=${apiKey}`;
         const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(googleUrl);
@@ -118,9 +134,8 @@ function fetchNearbyAmenities(lat, lng) {
                         const lngPos = place.geometry.location.lng;
                         const name = place.name || "Unnamed Location";
                         
-                        const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
+                        const currentDistance = map.distance([lat, lng], [latPos, lngPos]);
 
-                        // Track the single closest venue for the sidebar legend text tracking fields
                         if (currentDistance < nearestItems[cat.key].dist) {
                             nearestItems[cat.key] = { name: name, dist: currentDistance };
                         }
@@ -140,7 +155,7 @@ function fetchNearbyAmenities(lat, lng) {
             .catch(error => console.error(`Error fetching ${cat.type}:`, error));
     });
 
-    // Wait until all requests finish before updating the sidebar user interface text labels
+    // Wait until all parallel network routines finish processing completely
     Promise.all(requests).then(() => {
         updateLegendUI(nearestItems);
     });
