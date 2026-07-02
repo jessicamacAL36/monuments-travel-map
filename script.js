@@ -91,49 +91,39 @@ function fetchNearbyAmenities(lat, lng) {
 
     const radius = 10000; // 10km search radius
     const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
-    const types = ['hospital', 'police', 'gas_station'];
     
-    // Direct Google Places endpoint
-    const googleUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&types=${types.join('|')}&key=${apiKey}`;
-    
-    // Bypassing CORS by wrapping it in a direct, reliable public gateway string
-    const url = `https://corsproxy.io/?` + encodeURIComponent(googleUrl);
+    // Define the specific Google API type mapping strings
+    const categories = [
+        { type: 'hospital', key: 'medical', color: 'pin-hospital' },
+        { type: 'police', key: 'police', color: 'pin-police' },
+        { type: 'gas_station', key: 'fuel', color: 'pin-fuel' }
+    ];
 
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            console.log("Raw Google Places Data received:", data);
-            if (data && data.results) {
-                data.results.forEach(place => {
-                    if (!place.geometry || !place.geometry.location) return;
+    // Create a list of individual network requests for each category
+    const requests = categories.map(cat => {
+        const googleUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${cat.type}&key=${apiKey}`;
+        const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(googleUrl);
+        
+        return fetch(proxyUrl)
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.results) {
+                    data.results.forEach(place => {
+                        if (!place.geometry || !place.geometry.location) return;
 
-                    const latPos = place.geometry.location.lat;
-                    const lngPos = place.geometry.location.lng;
-                    const name = place.name || "Unnamed Location";
-                    
-                    let colourClass = ''; 
-                    let categoryKey = '';
-                    
-                    if (place.types.includes('hospital') || place.types.includes('doctor') || place.types.includes('medical_device')) {
-                        colourClass = 'pin-hospital';
-                        categoryKey = 'medical';
-                    } else if (place.types.includes('police')) {
-                        colourClass = 'pin-police';
-                        categoryKey = 'police';
-                    } else if (place.types.includes('gas_station')) {
-                        colourClass = 'pin-fuel';
-                        categoryKey = 'fuel';
-                    }
-
-                    if (categoryKey && latPos && lngPos) {
+                        const latPos = place.geometry.location.lat;
+                        const lngPos = place.geometry.location.lng;
+                        const name = place.name || "Unnamed Location";
+                        
                         const currentDistance = map.distance([userLat, userLng], [latPos, lngPos]);
 
-                        if (currentDistance < nearestItems[categoryKey].dist) {
-                            nearestItems[categoryKey] = { name: name, dist: currentDistance };
+                        // Track the single closest venue for the sidebar legend text tracking fields
+                        if (currentDistance < nearestItems[cat.key].dist) {
+                            nearestItems[cat.key] = { name: name, dist: currentDistance };
                         }
 
                         const amenityIcon = L.divIcon({
-                            className: `custom-pin ${colourClass}`,
+                            className: `custom-pin ${cat.color}`,
                             iconSize: [12, 12],
                             iconAnchor: [6, 6]
                         });
@@ -141,15 +131,16 @@ function fetchNearbyAmenities(lat, lng) {
                         L.marker([latPos, lngPos], { icon: amenityIcon })
                             .addTo(poiLayerGroup)
                             .bindPopup(`<b>${name}</b><br>Source: Google Places Database`);
-                    }
-                });
-                
-                updateLegendUI(nearestItems);
-            } else if (data && data.error_message) {
-                console.error("Google API Error:", data.error_message);
-            }
-        })
-        .catch(error => console.error("Network connection error:", error));
+                    });
+                }
+            })
+            .catch(error => console.error(`Error fetching ${cat.type}:`, error));
+    });
+
+    // Wait until all requests finish before updating the sidebar user interface text labels
+    Promise.all(requests).then(() => {
+        updateLegendUI(nearestItems);
+    });
 }
 
 function handleLocationError(error) {
