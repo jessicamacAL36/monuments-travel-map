@@ -89,12 +89,8 @@ function fetchNearbyAmenities(lat, lng) {
         fuel: { name: "None found", dist: Infinity }
     };
 
-    const radius = 10000; // 10km search radius
+    const radius = 50000; // 10km search radius
 
-    const radius = 25000;
-
-    const radius = 50000;
-    
     const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
     
     // Define the specific Google API type mapping strings
