@@ -4,7 +4,7 @@ let map;
 let userMarker;
 let poiLayerGroup;
 let legendContainer;
-let routeLineGroup; // Layer to hold the active navigation route line
+let routeLineGroup; // Layer to hold the active road navigation line
 let userLat = 0;
 let userLng = 0;
 
@@ -64,7 +64,7 @@ function updateLegendUI(nearest, history = getHistory()) {
         if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning Google...</small>`;
         const distanceKM = (item.dist / 1000).toFixed(1);
         
-        // Returns a clickable button element that triggers the route plotter instantly
+        // Returns a clickable button element that triggers the road route plotter instantly
         return `
             <br><small style="color: #444; font-weight: bold;">${item.name} (${distanceKM} km)</small>
             <br><button onclick="drawRouteTo('${keyName}')" style="margin-top:4px; padding:2px 6px; font-size:11px; background:#0051ff; color:white; border:none; border-radius:3px; cursor:pointer;">Show Route</button>
@@ -92,7 +92,7 @@ function updateLegendUI(nearest, history = getHistory()) {
     `;
 }
 
-// Global scope function to plot vector routing paths across your map view canvas
+// Global scope function to plot actual road routes via Google Directions API
 window.drawRouteTo = function(categoryKey) {
     routeLineGroup.clearLayers(); // Wipe out any previously active visual routes
     
@@ -102,23 +102,72 @@ window.drawRouteTo = function(categoryKey) {
         return;
     }
 
-    // Set up a standard Leaflet polyline path connection array vector
-    const pathCoordinates = [
-        [userLat, userLng], 
-        [targetPlace.lat, targetPlace.lng]
-    ];
+    const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
+    
+    // Call the official Google Directions API via our cors proxy
+    const googleDirectionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${userLat},${userLng}&destination=${targetPlace.lat},${targetPlace.lng}&mode=driving&key=${apiKey}`;
+    const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(googleDirectionsUrl);
 
-    const routeLine = L.polyline(pathCoordinates, {
-        color: '#0070f3',
-        weight: 5,
-        opacity: 0.8,
-        dashArray: '10, 10', // Creates a clean, modern navigation dashed look
-        lineJoin: 'round'
-    }).addTo(routeLineGroup);
+    fetch(proxyUrl)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "OK" && data.routes.length > 0) {
+                // Google stores routes inside an encoded polyline string for speed. 
+                // We parse it into real coordinate pairs that Leaflet can draw.
+                const points = decodeGooglePolyline(data.routes[0].overview_polyline.points);
+                
+                const roadLine = L.polyline(points, {
+                    color: '#0070f3',
+                    weight: 6,
+                    opacity: 0.8,
+                    lineJoin: 'round'
+                }).addTo(routeLineGroup);
 
-    // Smoothly pan and zoom out to fit both your location and the destination marker perfectly
-    map.fitBounds(routeLine.getBounds(), { padding: [50, 50] });
+                // Smoothly zoom the map to frame your driving route perfectly
+                map.fitBounds(roadLine.getBounds(), { padding: [50, 50] });
+            } else {
+                console.warn("Google Directions failed:", data.status);
+                alert("Could not calculate a road route. Falling back to straight line.");
+                // Fallback option if a specific road path can't be computed
+                const fallbackLine = L.polyline([[userLat, userLng], [targetPlace.lat, targetPlace.lng]], {
+                    color: '#ff3b30', weight: 4, dashArray: '5, 5'
+                }).addTo(routeLineGroup);
+                map.fitBounds(fallbackLine.getBounds());
+            }
+        })
+        .catch(err => console.error("Error drawing road layout route:", err));
 };
+
+// Helper function to turn Google's compressed text codes into coordinate arrays
+function decodeGooglePolyline(encoded) {
+    let points = [];
+    let index = 0, len = encoded.length;
+    let lat = 0, lng = 0;
+
+    while (index < len) {
+        let b, shift = 0, result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        let dlat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lat += dlat;
+
+        shift = 0;
+        result = 0;
+        do {
+            b = encoded.charCodeAt(index++) - 63;
+            result |= (b & 0x1f) << shift;
+            shift += 5;
+        } while (b >= 0x20);
+        let dlng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+        lng += dlng;
+
+        points.push([lat / 1e5, lng / 1e5]);
+    }
+    return points;
+}
 
 function updateLocation(position) {
     userLat = position.coords.latitude;
@@ -159,7 +208,7 @@ function fetchNearbyAmenities(lat, lng) {
     lastFetchedLng = lng;
     
     poiLayerGroup.clearLayers();
-    routeLineGroup.clearLayers(); // Clear line automatically when moving far away
+    routeLineGroup.clearLayers(); 
 
     let nearestItems = {
         medical: { name: "None found", dist: Infinity },
@@ -195,8 +244,6 @@ function fetchNearbyAmenities(lat, lng) {
 
                         if (currentDistance < nearestItems[cat.key].dist) {
                             nearestItems[cat.key] = { name: name, dist: currentDistance };
-                            
-                            // Map coordinates to our global handle variable for tracking lines
                             currentNearestData[cat.key] = { lat: latPos, lng: lngPos, name: name };
                         }
 
@@ -211,19 +258,15 @@ function fetchNearbyAmenities(lat, lng) {
                             .bindPopup(`<b>${name}</b><br>Source: Google Places Database`);
                     });
 
-                    // HISTORICAL PERSISTENCE LOGIC
-                    // If a valid location was found, compare it to update memory logs
                     if (nearestItems[cat.key].dist !== Infinity) {
                         const storageKey = `hist_${cat.key}`;
                         const lastSavedName = localStorage.getItem(storageKey);
                         const activeNearestName = nearestItems[cat.key].name;
 
-                        // If the memory slot is empty or a different closer location is found, archive the previous one
                         if (!lastSavedName) {
                             localStorage.setItem(storageKey, activeNearestName);
                         } else if (lastSavedName !== activeNearestName) {
-                            // Shuffle the old item into the history state and save the new master item
-                            localStorage.setItem(storageKey, `${lastSavedName} (Archived) -> Now: ${activeNearestName}`);
+                            localStorage.setItem(storageKey, `${lastSavedName} -> ${activeNearestName}`);
                         }
                     }
                 }
