@@ -103,18 +103,19 @@ html, body {
     box-shadow: 0 0 3px rgba(0,0,0,0.3);
 }
 
-/* 3D HUD Navigation Matrix Rule - Tilts map canvas by 55 degrees for driving perspective */
+/* 3D HUD Navigation Matrix Rule - Fixed to eliminate the grey void */
 .perspective-navigation .leaflet-map-pane {
     transform-style: preserve-3d;
-    transform: rotateX(55deg) translateY(10%) !important;
+    /* Tilts by 55 degrees AND scales up by 1.5x to push tiles past the screen boundaries */
+    transform: scale(1.5) rotateX(55deg) translateY(-5%) !important;
     transform-origin: 50% 100%;
     transition: transform 0.4s ease-out;
 }
 
-/* Counter-tilts individual markers and text popups so they stay upright facing the viewport screen */
+/* Counter-tilts individual markers and text popups so they stay perfectly upright */
 .perspective-navigation .leaflet-marker-icon,
 .perspective-navigation .leaflet-popup-pane {
     transform-style: preserve-3d;
-    transform: rotateX(-55deg) !important;
+    transform: rotateX(-55deg) scale(0.66) !important; /* Scale scaled back down to counteract the map zoom */
     transform-origin: 50% 50%;
 }
