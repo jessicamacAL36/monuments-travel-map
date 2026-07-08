@@ -7,10 +7,13 @@ html, body {
     overflow: hidden;
 }
 
-/* Ensure full screen map container */
+/* Ensure full screen map container with 3D space perspective enabled */
 #map {
     width: 100%;
     height: 100vh;
+    perspective: 1000px;
+    perspective-origin: 50% 70%;
+    transition: transform 0.5s ease-in-out;
 }
 
 /* Solid Circular Marker Pins Override */
@@ -28,6 +31,14 @@ html, body {
 .pin-fuel        { background-color: #00ff0d !important; } /* Green */
 .pin-hotel       { background-color: #6f42c1 !important; } /* Purple */
 .pin-supermarket { background-color: #ffee00 !important; } /* Yellow */
+
+/* High visibility custom navigation arrow pointer shape setup */
+.active-nav-arrow {
+    background-color: #0070f3 !important;
+    border: 3px solid #ffffff !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 10px rgba(0, 112, 243, 0.6) !important;
+}
 
 /* FLOATING MAP KEY/LEGEND DESIGN */
 .map-legend {
@@ -49,6 +60,37 @@ html, body {
     padding-bottom: 4px;
 }
 
+/* Ensure comfortable vertical spacing for layout data blocks */
+.map-legend div {
+    line-height: 1.4;
+}
+
+/* Clean styling for interactive map panel routing and navigation buttons */
+.map-legend button {
+    display: inline-block;
+    margin-top: 5px;
+    padding: 5px 10px;
+    font-size: 11px;
+    font-family: inherit;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #0070f3;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+/* Interactive button response hover and active clicking behaviors */
+.map-legend button:hover {
+    background-color: #0051cc;
+}
+
+.map-legend button:active {
+    transform: scale(0.95);
+}
+
 /* Key Color Dots inside Legend */
 .legend-key {
     display: inline-block;
@@ -59,4 +101,20 @@ html, body {
     border: 1px solid #ffffff;
     vertical-align: middle;
     box-shadow: 0 0 3px rgba(0,0,0,0.3);
+}
+
+/* 3D HUD Navigation Matrix Rule - Tilts map canvas by 55 degrees for driving perspective */
+.perspective-navigation .leaflet-map-pane {
+    transform-style: preserve-3d;
+    transform: rotateX(55deg) translateY(10%) !important;
+    transform-origin: 50% 100%;
+    transition: transform 0.4s ease-out;
+}
+
+/* Counter-tilts individual markers and text popups so they stay upright facing the viewport screen */
+.perspective-navigation .leaflet-marker-icon,
+.perspective-navigation .leaflet-popup-pane {
+    transform-style: preserve-3d;
+    transform: rotateX(-55deg) !important;
+    transform-origin: 50% 50%;
 }
