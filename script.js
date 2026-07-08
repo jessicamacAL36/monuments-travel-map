@@ -4,9 +4,12 @@ let map;
 let userMarker;
 let poiLayerGroup;
 let legendContainer;
-let routeLineGroup; // Layer to hold the active road navigation line
+let routeLineGroup; 
 let userLat = 0;
 let userLng = 0;
+
+// New Navigation Modes
+let isFollowMode = false; 
 
 // Efficiency Tracking variables to prevent redundant API spam
 let lastFetchedLat = 0;
@@ -28,7 +31,7 @@ function initMap() {
     }).addTo(map);
 
     poiLayerGroup = L.layerGroup().addTo(map);
-    routeLineGroup = L.layerGroup().addTo(map); // Init the route line layer
+    routeLineGroup = L.layerGroup().addTo(map); 
 
     const legend = L.control({ position: 'topleft' });
     legend.onAdd = function () {
@@ -49,7 +52,6 @@ function initMap() {
     }
 }
 
-// Function to fetch historical closest records from browser memory storage
 function getHistory() {
     return {
         medical: localStorage.getItem('hist_medical') || "None tracked yet",
@@ -58,21 +60,30 @@ function getHistory() {
     };
 }
 
-// Function to update the text labels inside our floating key container with Routing Hooks
 function updateLegendUI(nearest, history = getHistory()) {
     const formatNearest = (item, keyName) => {
         if (!item || item.dist === Infinity) return `<br><small style="color: #888;">Scanning Google...</small>`;
         const distanceKM = (item.dist / 1000).toFixed(1);
         
-        // Returns a clickable button element that triggers the road route plotter instantly
         return `
             <br><small style="color: #444; font-weight: bold;">${item.name} (${distanceKM} km)</small>
             <br><button onclick="drawRouteTo('${keyName}')" style="margin-top:4px; padding:2px 6px; font-size:11px; background:#0051ff; color:white; border:none; border-radius:3px; cursor:pointer;">Show Route</button>
         `;
     };
 
+    // Added a global Navigation Control Panel at the top of the key
     legendContainer.innerHTML = `
         <h4>Map Tracker</h4>
+        
+        <div style="margin-bottom: 12px; background: #f4f4f4; padding: 6px; border-radius: 4px; display: flex; gap: 6px;">
+            <button onclick="toggleFollowMode()" id="followBtn" style="flex: 1; padding: 4px; font-size: 11px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                ${isFollowMode ? '🛰️ Following: ON' : '🛰️ Follow Me'}
+            </button>
+            <button onclick="clearActiveRoute()" style="flex: 1; padding: 4px; font-size: 11px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold;">
+                ❌ Exit Route
+            </button>
+        </div>
+
         <div style="margin-bottom: 12px;"><span class="legend-key" style="background-color: #ff68ae;"></span>Your Location</div>
         
         <div style="margin-bottom: 12px; border-bottom: 1px solid #ddd; padding-bottom: 6px;">
@@ -92,9 +103,29 @@ function updateLegendUI(nearest, history = getHistory()) {
     `;
 }
 
-// Global scope function to plot actual road routes via Google Directions API
+// Feature 1: Toggle Follow Mode Tracking Loop
+window.toggleFollowMode = function() {
+    isFollowMode = !isFollowMode;
+    const btn = document.getElementById('followBtn');
+    
+    if (isFollowMode) {
+        btn.innerText = "🛰️ Following: ON";
+        btn.style.backgroundColor = "#17a2b8";
+        map.setView([userLat, userLng], 16); // Close zoom for driving view
+    } else {
+        btn.innerText = "🛰️ Follow Me";
+        btn.style.backgroundColor = "#28a745";
+    }
+};
+
+// Feature 2: Clear active direction layers cleanly
+window.clearActiveRoute = function() {
+    routeLineGroup.clearLayers();
+    map.setView([userLat, userLng], 13);
+};
+
 window.drawRouteTo = function(categoryKey) {
-    routeLineGroup.clearLayers(); // Wipe out any previously active visual routes
+    routeLineGroup.clearLayers(); 
     
     const targetPlace = currentNearestData[categoryKey];
     if (!targetPlace) {
@@ -103,8 +134,6 @@ window.drawRouteTo = function(categoryKey) {
     }
 
     const apiKey = "AIzaSyArTg8qjhDRXbk_r3Hbgne3TxQdWi0KXLQ";
-    
-    // Call the official Google Directions API via our cors proxy
     const googleDirectionsUrl = `https://maps.googleapis.com/maps/api/directions/json?origin=${userLat},${userLng}&destination=${targetPlace.lat},${targetPlace.lng}&mode=driving&key=${apiKey}`;
     const proxyUrl = `https://corsproxy.io/?` + encodeURIComponent(googleDirectionsUrl);
 
@@ -112,8 +141,6 @@ window.drawRouteTo = function(categoryKey) {
         .then(response => response.json())
         .then(data => {
             if (data.status === "OK" && data.routes.length > 0) {
-                // Google stores routes inside an encoded polyline string for speed. 
-                // We parse it into real coordinate pairs that Leaflet can draw.
                 const points = decodeGooglePolyline(data.routes[0].overview_polyline.points);
                 
                 const roadLine = L.polyline(points, {
@@ -123,22 +150,18 @@ window.drawRouteTo = function(categoryKey) {
                     lineJoin: 'round'
                 }).addTo(routeLineGroup);
 
-                // Smoothly zoom the map to frame your driving route perfectly
-                map.fitBounds(roadLine.getBounds(), { padding: [50, 50] });
+                // If follow mode is off, fit bounds so you can see the whole trip overview
+                if (!isFollowMode) {
+                    map.fitBounds(roadLine.getBounds(), { padding: [50, 50] });
+                }
             } else {
                 console.warn("Google Directions failed:", data.status);
-                alert("Could not calculate a road route. Falling back to straight line.");
-                // Fallback option if a specific road path can't be computed
-                const fallbackLine = L.polyline([[userLat, userLng], [targetPlace.lat, targetPlace.lng]], {
-                    color: '#ff3b30', weight: 4, dashArray: '5, 5'
-                }).addTo(routeLineGroup);
-                map.fitBounds(fallbackLine.getBounds());
+                alert("Could not calculate road route.");
             }
         })
         .catch(err => console.error("Error drawing road layout route:", err));
 };
 
-// Helper function to turn Google's compressed text codes into coordinate arrays
 function decodeGooglePolyline(encoded) {
     let points = [];
     let index = 0, len = encoded.length;
@@ -186,20 +209,22 @@ function updateLocation(position) {
         map.setView([userLat, userLng], 13);
     }
 
-    map.panTo([userLat, userLng]);
+    // Dynamic Tracking view controller lock
+    if (isFollowMode) {
+        map.panTo([userLat, userLng]);
+    }
+
     fetchNearbyAmenities(userLat, userLng);
 }
 
 function fetchNearbyAmenities(lat, lng) {
     if (lat === undefined || lng === undefined || lat === 0 || lng === 0) {
-        console.log("Waiting for valid GPS coordinates before scanning Google...");
         return; 
     }
 
     if (lastFetchedLat !== 0 && lastFetchedLng !== 0) {
         const movementDistance = map.distance([lat, lng], [lastFetchedLat, lastFetchedLng]);
         if (movementDistance < MIN_MOVEMENT_METRES) {
-            console.log(`User only moved ${movementDistance.toFixed(1)}m. Skipping Google API request to save quota.`);
             return;
         }
     }
@@ -208,7 +233,6 @@ function fetchNearbyAmenities(lat, lng) {
     lastFetchedLng = lng;
     
     poiLayerGroup.clearLayers();
-    routeLineGroup.clearLayers(); 
 
     let nearestItems = {
         medical: { name: "None found", dist: Infinity },
